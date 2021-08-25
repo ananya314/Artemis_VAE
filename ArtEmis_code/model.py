@@ -104,7 +104,7 @@ class Decoder(nn.Module):
 
         # print(epoch_num)
 
-        output_lstm, (hidden, cell_state) = self.rnn_decoder(output_lat, (hidden, cell))
+        output_lstm, (hidden, cell) = self.rnn_decoder(output_lat, (hidden, cell))
         # print("output_lstm: ", output_lstm.shape, "hidden lstm: ", hidden.shape)
 
         output = self.linear2(output_lstm.squeeze(0))  # squeezing out the [1,]
