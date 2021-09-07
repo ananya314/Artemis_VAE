@@ -22,7 +22,7 @@ torch.backends.cudnn.deterministic = True
 
 random_seed = 42
 torch.manual_seed(random_seed)
-BATCH_SIZE = 32 # originally 128
+BATCH_SIZE = 32  # originally 128
 NUM_EPOCHS = 15
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -31,9 +31,9 @@ OUTPUT_DIM = len(LABEL.vocab)
 ENC_EMB_DIM = 256
 DEC_EMB_DIM = 256
 HID_DIM = 512
-LAT_DIM = 100 # check again (amnt of data)
-N_LAYERS = 1 # N layers = 2 is complicated
-ENC_DROPOUT = 0.5 # 0.5 may be too much
+LAT_DIM = 100  # check again (amnt of data)
+N_LAYERS = 1  # N layers = 2 is complicated
+ENC_DROPOUT = 0.5  # 0.5 may be too much
 DEC_DROPOUT = 0.5
 
 
@@ -90,15 +90,16 @@ class Decoder(nn.Module):
                                    dropout=dropout)  # [256 -> 512] [embed dim -> hidden dim] # not sure about this here
         self.linear2 = torch.nn.Linear(hid_dim, input_dim)  # [512 -> 25805] [hidden dim -> len(TEXT.vocab)]
 
-    def forward(self, epoch_num, trg, hidden, cell): #NOTE: epoch_num does NOT refer to the epoch number. It refers to the value of "i" in the VAE.
+    def forward(self, epoch_num, trg, hidden,
+                cell):  # NOTE: epoch_num does NOT refer to the epoch number. It refers to the value of "i" in the VAE.
         # if (epoch_num == 1):
         #   output_lat = self.linear1(trg.unsqueeze(0)) #requires 3 dimensions [1, batch size, emb dim] sentence len = 1 (decode one at a time)
-        #    output_lstm, (hidden, cell_state) = self.rnn_decoder(output_lat, (hidden, cell))
+        #    output_lstm, (hidden, cell) = self.rnn_decoder(output_lat, (hidden, cell))
         # else:
         output_lat = self.embedding(trg.unsqueeze(0))
         # print("output_lat: ", output_lat.shape)
 
-        if (epoch_num == 1):
+        if epoch_num == 1:
             hidden = self.linear1(hidden)
             # print("hidden z: ", hidden.shape)
 
@@ -108,7 +109,7 @@ class Decoder(nn.Module):
         # print("output_lstm: ", output_lstm.shape, "hidden lstm: ", hidden.shape)
 
         output = self.linear2(output_lstm.squeeze(0))  # squeezing out the [1,]
-        return output, hidden, cell_state
+        return output, hidden, cell
 
 
 class VAE(nn.Module):
@@ -137,11 +138,10 @@ class VAE(nn.Module):
         # decoding one at a time
         for i in range(1, max_len):
 
-
             if i == 1:
                 hidden = z
-                #print("hidden: ", hidden.shape) # debugging
-                #cell = torch.zeros((1, BATCH_SIZE, 512)).to(DEVICE)  # try initial cell state = 0
+                # print("hidden: ", hidden.shape) # debugging
+                # cell = torch.zeros((1, BATCH_SIZE, 512), dtype=torch.int64).to(DEVICE)  # try initial cell state = 0
 
             prediction, hidden, cell = self.decoder(i, trg, hidden, cell)
             outputs[i] = prediction
@@ -149,4 +149,3 @@ class VAE(nn.Module):
             trg = prediction.argmax(1)  # no teacher forcing
 
         return outputs, mu, logvar
-
