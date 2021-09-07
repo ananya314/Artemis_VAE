@@ -6,6 +6,8 @@ import torchtext
 import time
 import random
 import pandas as pd
+import pickle
+import matplotlib.pyplot as plt
 import os
 import math
 import time
@@ -50,14 +52,31 @@ def rec_kl_loss(yhat, y, mu, logvar, beta):
     RL = criterion(yhat, y)
     KLD = 0.5 * torch.sum(logvar.exp() - logvar - 1 + mu.pow(2))
     loss = RL + (beta * KLD)
-    return loss
+    return loss, KLD
 
 
 # Training and testing the VAE
 
-epochs = 100
+EPOCHS = 100
+EPOCH = 1
 beta = 2
-for epoch in range(0, epochs + 1):
+KL_list = []
+KL = 0
+flag = 0
+while EPOCH <= EPOCHS:
+    file_list = os.listdir("/content/drive/MyDrive/Lumiere/Models/2/")
+
+    if (len(file_list) != 0) and (flag == 0):
+        file_list.sort(key=lambda o: int(o.split(".")[0]))
+        flag = 1
+        path = "/content/drive/MyDrive/Lumiere/Models/2/" + file_list[-1]
+        print(path)
+        checkpoint = torch.load(path)
+        vae.load_state_dict(checkpoint['vae_state_dict'])
+        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        EPOCH = checkpoint['epoch']
+        loss = checkpoint['loss']
+
     vae.train()
     train_loss = 0
     for batch in train_loader:
@@ -67,13 +86,28 @@ for epoch in range(0, epochs + 1):
         outputs_flatten = outputs[1:].view(-1, outputs.shape[-1])
         label_flatten = batch.TEXT[1:].view(-1)
 
-        loss = rec_kl_loss(outputs_flatten, label_flatten, mu, logvar, beta)
+        loss, KL = rec_kl_loss(outputs_flatten, label_flatten, mu, logvar, beta)
+        KL_list.append(KL.cpu().detach().numpy().copy())
         train_loss += loss.item()
 
         loss.backward()
         optimizer.step()
 
     os.chdir("/content/drive/MyDrive/Lumiere/Models/2/")
-    torch.save(vae.state_dict(), f'model_{epoch + 1}.pt')  # os.chdir to drive
+    torch.save({
+        'epoch': EPOCH,
+        'vae_state_dict': vae.state_dict(),
+        'optimizer_state_dict': optimizer.state_dict(),
+        'loss': loss
+    }, f'{EPOCH}.pt')
+    # torch.save(vae.state_dict(), f'model_{epoch + 1}.pt')  # os.chdir to drive
 
-    print(f'============= Epoch: {epoch + 1} Average loss: {train_loss / len(train_loader.dataset):.4f}')
+    print(f'============= Epoch: {EPOCH} Average loss: {train_loss / len(train_loader.dataset):.4f}')
+    EPOCH = EPOCH + 1
+
+    os.chdir("/content/drive/MyDrive/Lumiere/Models/KL/")
+
+    if EPOCH % 10 == 0:
+        with open("KL.txt", "wb") as fp:
+            pickle.dump(KL_list, fp)
+
