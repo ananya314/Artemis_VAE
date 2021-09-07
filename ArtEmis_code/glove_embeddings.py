@@ -29,7 +29,7 @@ BATCH_SIZE = 32 # originally 128
 NUM_EPOCHS = 15
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-path = "/content/drive/MyDrive/Lumiere/Dataset/artemis_data.csv"
+path = "/content/drive/MyDrive/Lumiere/Dataset/actual_sentences.csv"
 artemis_data = pd.read_csv(path)
 
 TEXT = torchtext.legacy.data.Field(sequential=True, use_vocab=True,
