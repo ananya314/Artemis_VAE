@@ -33,9 +33,9 @@ OUTPUT_DIM = len(LABEL.vocab)
 ENC_EMB_DIM = 256
 DEC_EMB_DIM = 256
 HID_DIM = 512
-LAT_DIM = 100  # check again (amnt of data)
-N_LAYERS = 1  # N layers = 2 is complicated
-ENC_DROPOUT = 0.5  # 0.5 may be too much
+LAT_DIM = 100  
+N_LAYERS = 1 
+ENC_DROPOUT = 0.5 
 DEC_DROPOUT = 0.5
 
 encoder = Encoder(INPUT_DIM, ENC_EMB_DIM, HID_DIM, LAT_DIM, N_LAYERS, ENC_DROPOUT).to(DEVICE)
@@ -46,6 +46,10 @@ lr = 1e-3
 optimizer = optim.Adam(vae.parameters(), lr=lr)
 PAD_IDX = TEXT.vocab.stoi["<pad>"]
 criterion = nn.CrossEntropyLoss(ignore_index=PAD_IDX)
+
+
+def sigmoid(x):
+    return (1 / (1 + np.exp(-x))) * 8
 
 
 def rec_kl_loss(yhat, y, mu, logvar, beta):
@@ -79,12 +83,17 @@ while EPOCH <= EPOCHS:
 
     vae.train()
     train_loss = 0
+    x = np.linspace(-2, 10, 100)
+    beta = sigmoid(x[EPOCH])  # increasing beta using sigmoid
+
     for batch in train_loader:
         optimizer.zero_grad()
 
         outputs, mu, logvar = vae(batch.TEXT)
         outputs_flatten = outputs[1:].view(-1, outputs.shape[-1])
         label_flatten = batch.TEXT[1:].view(-1)
+
+        # print(EPOCH, beta) # for debugging
 
         loss, KL = rec_kl_loss(outputs_flatten, label_flatten, mu, logvar, beta)
         KL_list.append(KL.cpu().detach().numpy().copy())
@@ -107,7 +116,6 @@ while EPOCH <= EPOCHS:
 
     os.chdir("/content/drive/MyDrive/Lumiere/Models/KL/")
 
-    if EPOCH % 10 == 0:
+    if EPOCH % 10 == 0:  # saving KL values
         with open("KL.txt", "wb") as fp:
             pickle.dump(KL_list, fp)
-
